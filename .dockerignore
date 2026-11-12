@@ -1,0 +1,47 @@
+# В образ попадают только requirements.txt и папка app/ (см. Dockerfile).
+# Этот файл уменьшает контекст сборки и страхует от случайного COPY . .
+
+# Секреты — передаются через environment в docker-compose
+.env
+.env.*
+
+# Виртуальное окружение (зависимости ставятся в образе заново)
+venv/
+.venv/
+
+# Кэш Python и инструментов
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Локальные базы и бэкапы
+*.db
+*.sqlite3
+*.sql
+backup_*
+
+# Тесты и зависимости для разработки
+test_*.py
+pytest.ini
+requirements-dev.txt
+
+# Документация
+docs/
+*.md
+
+# Docker-файлы
+Dockerfile
+docker-compose.yaml
+.dockerignore
+
+# Git, IDE, мусор ОС
+.git/
+.gitignore
+.vscode/
+.idea/
+**/.DS_Store
+*.log

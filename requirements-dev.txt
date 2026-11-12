@@ -1,0 +1,7 @@
+# Зависимости для разработки и тестов. В Docker-образ НЕ ставятся.
+# Установка: pip install -r requirements-dev.txt (подтянет и requirements.txt)
+-r requirements.txt
+
+pytest==9.2.0
+httpx2==2.16.0      # нужен TestClient из starlette
+aiosqlite==0.22.1   # async-драйвер SQLite для тестовой БД

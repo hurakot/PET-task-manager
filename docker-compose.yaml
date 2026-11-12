@@ -1,0 +1,47 @@
+# Запуск:   docker compose up --build
+# Стоп:     docker compose down        (данные БД сохранятся в volume)
+# Сброс БД: docker compose down -v      (удалит volume вместе с данными)
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    # Значения подставляются из файла .env рядом с этим файлом
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # данные живут вне контейнера и переживают перезапуск
+    # Порт БД наружу НЕ публикуем: приложение ходит в неё по внутренней сети compose.
+    # Если нужно подключиться с Mac (DBeaver, psql) — раскомментируй.
+    # 5433, а не 5432, чтобы не конфликтовать с локальным Postgres; 127.0.0.1 — только с этого компьютера.
+    # ports:
+    #   - "127.0.0.1:5433:5432"
+    healthcheck:
+      # Postgres стартует не мгновенно — проверяем, что он реально принимает подключения
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    environment:
+      # Внутри compose хост БД — это имя сервиса "db", а не localhost.
+      # Переменная окружения важнее значения из .env, поэтому локальный запуск
+      # (uvicorn из venv с localhost в .env) продолжит работать как раньше.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+    depends_on:
+      db:
+        condition: service_healthy   # ждём, пока healthcheck БД станет зелёным
+    ports:
+      # 127.0.0.1 — API доступно только с этого компьютера: http://localhost:8000/docs
+      - "127.0.0.1:8000:8000"
+
+volumes:
+  pgdata:
