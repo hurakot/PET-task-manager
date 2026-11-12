@@ -1,5 +1,9 @@
 # Task Manager API
 
+**Демо:** https://pet-task-manager.onrender.com/docs
+
+> Демо работает на бесплатном тарифе Render: после ~15 минут простоя сервис засыпает, и первый запрос может идти до минуты. База демо периодически очищается — не храните там ничего важного.
+
 REST API для личного списка задач с регистрацией и JWT-авторизацией. Каждый пользователь видит и меняет только свои задачи.
 
 ## Идея проекта
@@ -23,7 +27,8 @@ REST API для личного списка задач с регистрацие
 | Настройки | pydantic-settings, `.env` |
 | Авторизация | OAuth2 Password + JWT (PyJWT), bcrypt |
 | Тесты | pytest, FastAPI TestClient, SQLite (aiosqlite) |
-| Инфраструктура | Docker, Docker Compose, nginx + Let's Encrypt (на сервере) |
+| Инфраструктура | Docker, Docker Compose (локально) |
+| Деплой | Render: Web Service (Docker) + Render PostgreSQL |
 
 ## Документация
 
@@ -33,7 +38,7 @@ REST API для личного списка задач с регистрацие
 | [docs/api.md](docs/api.md) | Все эндпоинты, авторизация, коды ответов, примеры на curl |
 | [docs/configuration.md](docs/configuration.md) | Переменные окружения, `.env`, генерация секретов |
 | [docs/development.md](docs/development.md) | Локальный запуск, тесты, работа с зависимостями, команды Docker |
-| [docs/deployment.md](docs/deployment.md) | Подробный деплой на сервер: SSH, firewall, Docker, nginx, HTTPS, бэкапы |
+| [docs/deployment.md](docs/deployment.md) | Альтернатива Render — деплой на собственный VPS: SSH, firewall, Docker, nginx, HTTPS, бэкапы |
 | [docs/known-issues.md](docs/known-issues.md) | Ограничения текущей версии и планы улучшений |
 
 ## Быстрый старт (локально, Docker)
@@ -41,7 +46,7 @@ REST API для личного списка задач с регистрацие
 Нужен установленный и запущенный Docker Desktop.
 
 ```bash
-git clone <url-репозитория> PET-task-manager
+git clone https://github.com/hurakot/PET-task-manager/ PET-task-manager
 cd PET-task-manager
 
 cp .env.example .env
@@ -69,7 +74,32 @@ pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-## Запуск на сервере
+## Деплой на Render
+
+Так развёрнуто демо. Docker-compose на Render не используется: приложение и база — два отдельных сервиса.
+
+**1. База:** New → **Postgres**, тариф Free. Запомнить регион, скопировать **Internal Database URL**.
+
+**2. Приложение:** New → **Web Service** → репозиторий с GitHub, **Language: Docker**, регион тот же, что у базы. Health Check Path: `/`.
+
+**3. Environment Variables веб-сервиса:**
+
+| Key | Value |
+|---|---|
+| `DATABASE_URL` | Internal Database URL, в котором `postgresql://` заменено на **`postgresql+asyncpg://`** |
+| `SECRET_KEY` | `python3 -c "import secrets; print(secrets.token_hex(32))"` |
+| `ALGORITHM` | `HS256` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` |
+
+Порт задавать не нужно: Render передаёт его в переменной `PORT`, Dockerfile её подхватывает.
+
+Без `+asyncpg` приложение не стартует (`The asyncio extension requires an async driver`). Пароли в код и в репозиторий не вписываются — только в Environment.
+
+**Обновление:** `git push` в `main` — Render пересоберёт и перезапустит сервис сам.
+
+## Запуск на собственном сервере (VPS)
+
+Альтернатива Render, если нужен свой сервер под полным контролем. Демо развёрнуто не так — это инструкция для самостоятельного деплоя.
 
 Кратко. Подробно, с объяснениями и решением проблем — [docs/deployment.md](docs/deployment.md).
 
@@ -85,7 +115,7 @@ sudo usermod -aG docker $USER      # затем перелогиниться
 
 **2. Код и настройки:**
 ```bash
-git clone <url-репозитория> ~/PET-task-manager && cd ~/PET-task-manager
+git clone https://github.com/hurakot/PET-task-manager/ ~/PET-task-manager && cd ~/PET-task-manager
 cp .env.example .env && chmod 600 .env
 nano .env                          # НОВЫЕ POSTGRES_PASSWORD и SECRET_KEY
 ```
@@ -134,5 +164,5 @@ sudo certbot --nginx -d example.com
 
 - `.env` с секретами не попадает ни в git, ни в Docker-образ; в репозитории только `.env.example`.
 - Приложение в контейнере работает от непривилегированного пользователя, без `--reload`.
-- PostgreSQL не публикует порт наружу; API доступно только через nginx.
-- Не меняй `127.0.0.1:8000:8000` в `docker-compose.yaml` на `8000:8000`: Docker обходит ufw, и порт окажется открыт в интернет.
+- На Render секреты хранятся в Environment веб-сервиса, база подключается по внутреннему адресу и из интернета недоступна.
+- На своём сервере: PostgreSQL не публикует порт наружу, API доступно только через nginx. Не меняй `127.0.0.1:8000:8000` в `docker-compose.yaml` на `8000:8000`: Docker обходит ufw, и порт окажется открыт в интернет.

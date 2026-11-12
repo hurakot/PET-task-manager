@@ -1,12 +1,16 @@
 import os
+
 # Отдельная БД ТОЛЬКО для тестов: временный файл SQLite через async-драйвер aiosqlite.
 # Переменную ставим ДО импорта app — иначе engine создастся с адресом из .env (Postgres).
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
+os.environ.setdefault("SECRET_KEY", "test-secret-key-0123456789abcdef0123456789abcdef")
+os.environ.setdefault("ALGORITHM", "HS256")
+os.environ.setdefault("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app   # твоё приложение (lifespan сам создаст таблицы)
+from app.main import app  # твоё приложение (lifespan сам создаст таблицы)
 
 
 @pytest.fixture(name="client")
@@ -23,17 +27,22 @@ def client_fixture():
 # Помощник: зарегистрировать + залогинить, вернуть заголовок с токеном
 def auth_headers(client, username, password):
     client.post("/users/register", json={"username": username, "password": password})
-    token = client.post("/users/token", data={"username": username, "password": password}).json()["access_token"]
+    token = client.post(
+        "/users/token", data={"username": username, "password": password}
+    ).json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
 
 # ---------- Регистрация ----------
 def test_register_ok(client):
-    r = client.post("/users/register", json={"username": "alice", "password": "secret1"})
+    r = client.post(
+        "/users/register", json={"username": "alice", "password": "secret1"}
+    )
     assert r.status_code == 200
     body = r.json()
     assert body["username"] == "alice"
     assert "password" not in body and "hashed_password" not in body
+
 
 def test_register_duplicate(client):
     client.post("/users/register", json={"username": "alice", "password": "secret1"})
@@ -47,6 +56,7 @@ def test_login_wrong_password(client):
     r = client.post("/users/token", data={"username": "alice", "password": "WRONG"})
     assert r.status_code == 400
 
+
 def test_login_ok(client):
     client.post("/users/register", json={"username": "alice", "password": "secret1"})
     r = client.post("/users/token", data={"username": "alice", "password": "secret1"})
@@ -59,8 +69,12 @@ def test_login_ok(client):
 def test_tasks_require_auth(client):
     assert client.get("/tasks/").status_code == 401
 
+
 def test_tasks_bad_token(client):
-    assert client.get("/tasks/", headers={"Authorization": "Bearer garbage"}).status_code == 401
+    assert (
+        client.get("/tasks/", headers={"Authorization": "Bearer garbage"}).status_code
+        == 401
+    )
 
 
 # ---------- CRUD под своим пользователем ----------
@@ -93,5 +107,10 @@ def test_user_isolation(client):
     assert len(client.get("/tasks/", headers=bh).json()) == 1
 
     assert client.get(f"/tasks/{a_task['id']}", headers=bh).status_code == 404
-    assert client.patch(f"/tasks/{a_task['id']}", headers=bh, json={"is_done": True}).status_code == 404
+    assert (
+        client.patch(
+            f"/tasks/{a_task['id']}", headers=bh, json={"is_done": True}
+        ).status_code
+        == 404
+    )
     assert client.delete(f"/tasks/{a_task['id']}", headers=bh).status_code == 404
