@@ -29,7 +29,7 @@ REST API для личного списка задач с регистрацие
 | Тесты | pytest, FastAPI TestClient, SQLite (aiosqlite) |
 | Инфраструктура | Docker, Docker Compose (локально) |
 
-**Деплой:** проект развёрнут на платформе [Render](https://render.com) как веб-сервис — Render: Web Service (Docker) + Render PostgreSQL. Приложение собирается из `Dockerfile` при каждом `git push` в `main`, база данных подключена как отдельный сервис Render PostgreSQL.
+**Деплой:** проект развёрнут на платформе [Render](https://render.com) как веб-сервис — Render: Web Service (Docker) + Render PostgreSQL. Приложение собирается из `Dockerfile` при каждом `git push` в `main` (Особенности работы сервиса), база данных подключена как отдельный сервис Render PostgreSQL.
 
 ## Документация
 
