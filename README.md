@@ -28,7 +28,8 @@ REST API для личного списка задач с регистрацие
 | Авторизация | OAuth2 Password + JWT (PyJWT), bcrypt |
 | Тесты | pytest, FastAPI TestClient, SQLite (aiosqlite) |
 | Инфраструктура | Docker, Docker Compose (локально) |
-| Деплой | Render: Web Service (Docker) + Render PostgreSQL |
+
+**Деплой:** проект развёрнут на платформе [Render](https://render.com) как веб-сервис — Render: Web Service (Docker) + Render PostgreSQL. Приложение собирается из `Dockerfile` при каждом `git push` в `main`, база данных подключена как отдельный сервис Render PostgreSQL.
 
 ## Документация
 
